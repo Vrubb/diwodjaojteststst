@@ -55,9 +55,9 @@
             flex-direction: column;
         }
         .letter {
-            font-size: 5vw;
+            font-size: 4vw;
             font-weight: 700;
-            margin: 1vh 0;
+            margin: 1.5vh 0;
             opacity: 0.7;
             transition: opacity 0.3s;
             pointer-events: auto;
@@ -134,11 +134,11 @@
             // Configuration
             const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
             const COLUMN_COUNT = 26; // A-Z columns
-            const LETTERS_PER_COLUMN = 20;
-            const COLUMN_SPACING = window.innerWidth / COLUMN_COUNT;
-            const LETTER_HEIGHT = window.innerHeight / 10;
-            const BASE_SCROLL_SPEED = 1.5; // Increased scroll speed
-            const PARALLAX_RANGE = 0.8;
+            const LETTERS_PER_COLUMN = 30;
+            const COLUMN_SPACING = window.innerWidth / (COLUMN_COUNT + 2);
+            const LETTER_HEIGHT = window.innerHeight / 15;
+            const BASE_SCROLL_SPEED = 0.8;
+            const PARALLAX_RANGE = 0.3; // Reduced randomness for smoother movement
             
             // DOM Elements
             const gridContainer = document.getElementById('gridContainer');
@@ -156,7 +156,7 @@
             let animationId = null;
             const columns = [];
             
-            // Create organized but randomly offset columns
+            // Create organized columns with controlled randomness
             function createGrid() {
                 grid.innerHTML = '';
                 
@@ -164,14 +164,15 @@
                     const column = document.createElement('div');
                     column.className = 'letter-column';
                     
-                    // Position columns horizontally with random vertical offset
-                    const left = i * COLUMN_SPACING + (Math.random() * 50 - 25);
-                    const top = Math.random() * -window.innerHeight;
+                    // Position columns with slight random offsets
+                    const left = (i + 1) * COLUMN_SPACING + (Math.random() * 30 - 15);
+                    const top = (Math.random() * -window.innerHeight * 0.5);
                     const speed = BASE_SCROLL_SPEED * (1 + (Math.random() * PARALLAX_RANGE * 2 - PARALLAX_RANGE));
                     
                     column.style.left = `${left}px`;
                     column.style.top = `${top}px`;
                     column.dataset.speed = speed;
+                    column.dataset.baseTop = top;
                     
                     // Create letters in column
                     for (let j = 0; j < LETTERS_PER_COLUMN; j++) {
@@ -195,42 +196,41 @@
                 }
             }
             
-            // Animation loop with proper wrapping
+            // Smooth animation with proper infinite scrolling
             function animate() {
-                // Apply easing to target scroll
+                // Apply controlled easing
                 scrollX += (targetX - scrollX) * 0.1;
                 scrollY += (targetY - scrollY) * 0.1;
                 
-                // Apply scroll with individual column speeds and wrapping
-                columns.forEach((column, i) => {
+                // Apply scroll with controlled parallax
+                columns.forEach(column => {
                     const speed = parseFloat(column.dataset.speed);
-                    const x = scrollX * 0.3; // Less horizontal movement
+                    const baseTop = parseFloat(column.dataset.baseTop);
+                    const x = scrollX * 0.2; // Reduced horizontal movement
                     const y = scrollY * speed;
                     
-                    // Get current position
-                    const rect = column.getBoundingClientRect();
+                    // Calculate vertical position with wrapping
+                    let currentY = baseTop + y;
                     const colHeight = LETTERS_PER_COLUMN * LETTER_HEIGHT;
                     
-                    // Wrap vertically when off screen
-                    if (y + rect.top > window.innerHeight + colHeight) {
-                        column.style.top = `${-colHeight + (Math.random() * -100)}px`;
+                    // Smooth vertical wrapping
+                    if (currentY > window.innerHeight + 100) {
+                        column.dataset.baseTop = -colHeight + (Math.random() * -200);
+                        currentY = parseFloat(column.dataset.baseTop) + y;
                     } 
-                    else if (y + rect.top + colHeight < 0) {
-                        column.style.top = `${window.innerHeight + (Math.random() * 100)}px`;
+                    else if (currentY + colHeight < -100) {
+                        column.dataset.baseTop = window.innerHeight + (Math.random() * 200);
+                        currentY = parseFloat(column.dataset.baseTop) + y;
                     }
                     
-                    // Maintain horizontal organization with slight variation
-                    const targetLeft = i * COLUMN_SPACING + (Math.random() * 40 - 20);
-                    const currentLeft = parseFloat(column.style.left);
-                    column.style.left = `${currentLeft + (targetLeft - currentLeft) * 0.05}px`;
-                    
                     column.style.transform = `translate(${x}px, ${y}px)`;
+                    column.style.top = `${currentY - y}px`; // Maintain base position
                 });
                 
                 animationId = requestAnimationFrame(animate);
             }
             
-            // Event handlers with increased sensitivity
+            // Improved drag handling
             function handleMouseDown(e) {
                 isDragging = true;
                 startX = e.clientX - scrollX;
@@ -242,9 +242,9 @@
             function handleMouseMove(e) {
                 if (!isDragging) return;
                 
-                // Increased movement sensitivity
-                targetX = (e.clientX - startX) * 2;
-                targetY = (e.clientY - startY) * 2;
+                // Balanced drag sensitivity
+                targetX = (e.clientX - startX) * 1.2;
+                targetY = (e.clientY - startY) * 1.2;
                 e.preventDefault();
             }
             
@@ -271,10 +271,13 @@
             
             init();
             
-            // Handle window resize
+            // Responsive column spacing
             window.addEventListener('resize', function() {
                 columns.forEach((column, i) => {
-                    column.style.left = `${i * (window.innerWidth / COLUMN_COUNT) + (Math.random() * 50 - 25)}px`;
+                    const newLeft = (i + 1) * (window.innerWidth / (COLUMN_COUNT + 2)) + (Math.random() * 30 - 15);
+                    const currentTop = parseFloat(column.style.top);
+                    column.style.left = `${newLeft}px`;
+                    column.style.top = `${currentTop}px`;
                 });
             });
         });
